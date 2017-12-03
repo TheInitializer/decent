@@ -13,6 +13,19 @@ pre {
 </style>
 
 <div id="app">
+  <nav id="nav">
+    <div class="nav-title">
+      bantisocial
+    </div>
+    <div class="nav-user">
+      <button id="register" class="session-action-btn btn btn-primary">Register</button>
+      <button id="login" class="session-action-btn btn btn-visible">Login</button>
+      <button id="logout" class="session-action-btn btn btn-visible">Logout</button>
+
+      <span id="login-status"></span>
+    </div>
+  </nav>
+
   <aside id="sidebar">
     <div class="sidebar-heading">
       <b>Channels</b>
@@ -27,12 +40,6 @@ pre {
         <input class="input input-bordered" id="chat-input" autofocus autocomplete="off">
         <button class="btn">Send</button>
       </form>
-
-      <button id="register" class="session-action-btn btn btn-primary">Register</button>
-      <button id="login" class="session-action-btn btn btn-visible">Login</button>
-      <button id="logout" class="session-action-btn btn btn-visible">Logout</button>
-
-      <span id="login-status"></span>
     </div>
   </main>
 </div>

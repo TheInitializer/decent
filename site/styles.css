@@ -10,6 +10,9 @@
   --accent-light: #177aea;
   --accent: #106cd2;
 
+  --accent-alpha1: rgba(23, 123, 235, 0.1);
+  --accent-alpha2: rgba(23, 123, 235, 0.2);
+
   /* Text */
   --text-black: #151314;
   --text-red: #c54445;
@@ -27,26 +30,55 @@ body, html, #app {
 
   font-family: sans-serif;
 
-  background: var(--mute);
   box-sizing: border-box; }
 
 #app {
-  display: flex;
-  flex-direction: row; }
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: 50px 1fr;
+  grid-template-areas:
+    'nav nav'
+    'sidebar main'; }
 
   #app.modal-visible {
     opacity: .4;
     pointer-events: none; }
 
-  #central-pane {
-    flex-grow: 1;
+#central-pane {
+  grid-area: main;
 
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  background: var(--mute-darker); }
+
+#nav {
+  grid-area: nav;
+  display: flex;
+  align-items: stretch;
+
+  background: var(--mute-lighter); }
+
+  .nav-title {
+    width: 240px;
+    margin-right: auto; /* Push rest of nav as far right as possible. */
     display: flex;
-    flex-direction: column; }
+    align-items: center;
+    justify-content: center;
+
+    color: #fff;
+    font-size: 32px;
+    font-weight: bold; }
 
 #sidebar {
-  flex-grow: 0;
-  width: 240px;
+  grid-area: sidebar;
 
   color: var(--text-grey);
   background: var(--mute);
@@ -177,10 +209,7 @@ body, html, #app {
     color: var(--text-grey); }
 
 #messages {
-  flex-grow: 1;
-
   color: var(--white);
-  background-color: var(--mute-dark);
 
   overflow-y: auto; }
 
@@ -193,12 +222,15 @@ body, html, #app {
 
   .message-channelref {
     color: var(--accent);
-    background-color: rgba(23, 123, 235, 0.1); /*  */
+    background-color: var(--accent-alpha1); /*  */
     padding: 2px;
     margin: -2px;
     border-radius: 2px;
 
     cursor: pointer; }
+
+    .message-channelref:hover {
+      background-color: var(--accent-alpha2); }
 
   .message-mention {
     color: #cfa041; }
