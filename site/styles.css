@@ -13,6 +13,14 @@
   --accent-alpha1: rgba(23, 123, 235, 0.1);
   --accent-alpha2: rgba(23, 123, 235, 0.2);
 
+  /* Additional colors */
+  --color-red: #d2103e;
+  --color-red-light: #e01e4c;
+  --color-yellow: #e6d411;
+  --color-yellow-light: #f6e418;
+  --color-green: #10d23d;
+  --color-green-light: #13e344;
+
   /* Text */
   --text-black: #151314;
   --text-red: #c54445;
@@ -66,16 +74,94 @@ body, html, #app {
 
   background: var(--mute-lighter); }
 
-  .nav-title {
+  #server-dropdown {
     width: 240px;
     margin-right: auto; /* Push rest of nav as far right as possible. */
     display: flex;
     align-items: center;
-    justify-content: center;
 
-    color: #fff;
-    font-size: 32px;
-    font-weight: bold; }
+    cursor: pointer;
+
+    position: relative; }
+
+    #server-dropdown:hover {
+      background: rgba(255, 255, 255, 0.1); }
+
+    #server-dropdown.notifications:after {
+      display: block;
+      content: ' ';
+
+      width: 10px;
+      height: 10px;
+      position: absolute;
+      top: 12px;
+      right: 2px;
+      border-radius: 999px;
+      background: var(--color-red-light);
+      border: 1px solid var(--color-red);
+    }
+
+    #server-dropdown-current {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      box-sizing: border-box;
+      width: 100%;
+      margin: 0 12px;
+      padding-right: 24px;
+      position: relative;
+
+      color: #fff;
+      font-size: 22px;
+      font-weight: bold; }
+
+      #server-dropdown-current:after {
+        display: block;
+        content: ' ';
+
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        background-image: url('./img/down-arrow.svg');
+        position: absolute;
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%); }
+
+    #server-dropdown-options {
+      display: none;
+
+      position: absolute;
+      bottom: -10px;
+      left: 10px;
+      transform: translateY(100%);
+      min-width: calc(100% - 20px);
+
+      background: #fff;
+      border-radius: 4px;
+      padding: 8px 0; }
+
+      .server-dropdown-option {
+        color: var(--mute);
+        font-size: 16px;
+        font-weight: normal;
+        padding: 8px 16px; }
+
+        .server-dropdown-option:hover {
+          background: #eee; }
+
+        .server-dropdown-option .notification-count {
+          color: #fff;
+          background: var(--color-red-light);
+          border: 1px solid var(--color-red);
+          border-radius: 2px;
+          padding: 2px 4px;
+          margin-left: 4px;
+          font-size: 12px;
+          float: right; }
+
+    #server-dropdown.open #server-dropdown-options {
+      display: block; }
 
 #sidebar {
   grid-area: sidebar;

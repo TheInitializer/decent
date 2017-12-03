@@ -14,8 +14,14 @@ pre {
 
 <div id="app">
   <nav id="nav">
-    <div class="nav-title">
-      bantisocial
+    <div id="server-dropdown" class="notifications">
+      <div id="server-dropdown-current">Bantisocial</div>
+
+      <div id="server-dropdown-options">
+        <div class="server-dropdown-option">AT Fun<span class="notification-count">99+</span></div>
+        <div class="server-dropdown-option">Nonfree Newsroom<span class="notification-count">4</span></div>
+        <div class="server-dropdown-option">Bantisocial</div>
+      </div>
     </div>
     <div class="nav-user">
       <button id="register" class="session-action-btn btn btn-primary">Register</button>
@@ -59,3 +65,11 @@ pre {
 
 <script nomodule src="script-nomodule.js"></script> <!-- for browsers not supporting es6 modules -->
 <script type="module" src="js/index.js"></script>   <!-- for those whomst do -->
+
+<!-- Janky server dropdown demo scripts
+     Please remove ASAP! -->
+<script>
+  document.getElementById('server-dropdown').addEventListener('click', function(){
+    this.className = (this.className === 'notifications open') ? 'notifications' : 'notifications open';
+  });
+</script>
