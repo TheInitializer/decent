@@ -22,6 +22,19 @@ export default class ChannelsActor extends Actor {
       this.populateSidebarList(channels)
     })
 
+    this.actors.messages.on('unread', channelID => {
+      // Label it as unread
+      for (const channel of this.channels) {
+        if (channel.id === channelID) {
+          channel.unread = true
+        }
+      }
+
+      // Update UI
+      const channelEl = document.getElementById('channel-' + channelID)
+      channelEl.classList.add('channel-unread')
+    })
+
     // Show/hide the create channel button depending on session state
     this.actors.session.on('update', (loggedIn, sessionObj) => {
       const btn = document.getElementById('create-channel')
@@ -157,6 +170,7 @@ export default class ChannelsActor extends Actor {
     for (const channel of channels) {
       const el = document.createElement('li')
       el.classList.add('channel')
+      el.id = 'channel-' + channel.id
       el.appendChild(document.createTextNode('#' + channel.name))
 
       if (channel.id === this.activeChannelID) {

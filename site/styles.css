@@ -87,6 +87,9 @@ body, html, #app {
     padding: 8px 18px;
     font-size: 120%; }
 
+    #sidebar .sidebar-heading b {
+      letter-spacing: -2px; }
+
   #sidebar .sidebar-section {
     border-bottom: 1px solid var(--mute-light);
     padding: 18px 0; }
@@ -185,6 +188,8 @@ body, html, #app {
       list-style: none;
       cursor: pointer;
 
+      position: relative;
+
       border-left: 2px solid transparent;
       padding: 8px 18px; }
 
@@ -195,6 +200,18 @@ body, html, #app {
 
       #sidebar #channels-list .channel:hover {
         background-color: var(--mute-light); }
+
+      #sidebar #channels-list .channel-unread {
+        color: var(--accent);
+        font-weight: bold;
+        letter-spacing: -1px; }
+
+        #sidebar #channels-list .channel-unread::before {
+          position: absolute;
+          left: 3px;
+
+          font-size: 13px;
+          content: '●'; }
 
 .modal {
   position: fixed;

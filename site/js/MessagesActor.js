@@ -8,18 +8,64 @@ export function queryByDataset(key, value) {
 export default class MessagesActor extends Actor {
   init() {
     this.messagesContainer = document.getElementById('messages')
-    this.mostRecentMessageID = null // Used for the [Up -> Edit most recent mesage] binding
+    this.channelMessagesMap = new Map()
+
+    this.actors.session.on('switch server', async () => {
+      await this.actors.channels.waitFor('update channel list')
+      this.channelMessagesMap = new Map()
+
+      const channels = this.actors.channels.channels
+      for (const channel of channels) {
+        // Fetch latest messages in the channel.
+        const { messages } = await get(`channel/${channel.id}/latest-messages`, this.actors.session.currentServerURL)
+
+        // Cache them, ready for displaying later.
+        this.channelMessagesMap.set(channel.id, messages)
+        this.emit('update message cache', channel.id, messages)
+      }
+    })
 
     this.actors.channels.on('update active channel', async channel => {
       this.clear()
 
-      // Display latest messages in the channel
-      const { messages } = await get(`channel/${channel.id}/latest-messages`, this.actors.session.currentServerURL)
-      for (const msg of messages) {
-        await this.showMessage(msg)
-      }
+      const cachedMessages = this.channelMessagesMap.get(channel.id) || []
+      const latestCachedMessageID = cachedMessages.length > 1 ? cachedMessages[cachedMessages.length - 1].id : null
 
-      this.emit('loaded messages', channel)
+      const [ , restMessages ] = await Promise.all([
+        (async () => {
+          // Display cached messages.
+          //
+          // We do this *while* fetching any more, unread messages after these
+          // cached ones so a) offline is more friendly, and b) the client appears
+          // to run faster. Yay for design!
+          for (const message of cachedMessages) {
+            await this.showMessage(message)
+          }
+        })(),
+        (async () => {
+          // Fetch any messages after the latest cached message.
+          let { messages: restMessages } = await get(
+            latestCachedMessageID
+              ? `channel/${channel.id}/latest-messages?after=${latestCachedMessageID}&n=all`
+              : `channel/${channel.id}/latest-messages`,
+            this.actors.session.currentServerURL)
+
+          if (restMessages.length > 0) {
+            // Add these new messages to the cache.
+            const messages = [ ...cachedMessages, ...restMessages ]
+            this.channelMessagesMap.set(channel.id, messages)
+
+            this.emit('update message cache', channel.id, messages)
+          }
+
+          return restMessages
+        })(),
+      ])
+
+      // Display the rest of the messages (that we just fetched from the server).
+      for (const message of restMessages) {
+        await this.showMessage(message)
+      }
     })
 
     this.actors.session.on('update', (loggedIn, sessionObj) => {
@@ -59,10 +105,16 @@ export default class MessagesActor extends Actor {
           return
         }
 
-        this.editMessage(this.mostRecentMessageID)
+        // Find the most recent message, in this channel, written by this user.
+        const messages = this.channelMessagesMap.get(this.actors.channels.activeChannelID)
+        const message = messages.reverse().find(msg => this.actors.session.isCurrentUser(msg.authorID))
 
-        evt.preventDefault()
-        return false
+        if (message) {
+          this.editMessage(message.id)
+
+          evt.preventDefault()
+          return false
+        }
       }
     })
 
@@ -75,20 +127,38 @@ export default class MessagesActor extends Actor {
   }
 
   bindToSocket(socket) {
-    socket.on('received chat message', async msg => {
-      if (typeof msg !== 'object') {
-        return
-      }
+    socket.on('received chat message', async ({ message: msg }) => {
+      // Push to messages cache.
+      // TODO: limit messages cache to 50 messages or so.
+      const messages = this.channelMessagesMap.get(msg.channelID) || []
+      messages.push(msg)
+      this.channelMessagesMap.set(msg.channelID, messages)
+      this.emit('update message cache', msg.channelID, messages)
 
-      await this.showMessage(msg.message)
+      if (msg.channelID === this.actors.channels.activeChannelID) {
+        // Display message.
+        await this.showMessage(msg)
+      } else {
+        // Unread message!
+        this.emit('unread', msg.channelID)
+      }
     })
 
-    socket.on('edited chat message', async msg => {
-      if (typeof msg !== 'object') {
-        return
+    socket.on('edited chat message', async ({ message: msg }) => {
+      // Update messages cache.
+      const messages = this.channelMessagesMap.get(msg.channelID) || []
+
+      for (let message of messages) {
+        if (message.id === msg.id) {
+          message = msg
+        }
       }
 
-      await this.showMessageRevision(msg.message)
+      this.channelMessagesMap.set(msg.channelID, messages)
+      this.emit('update message cache', msg.channelID, messages)
+
+      // Display newly-edited message.
+      await this.showMessageRevision(msg)
     })
   }
 
@@ -139,8 +209,6 @@ export default class MessagesActor extends Actor {
       }, this.actors.session.currentServerURL)
 
       if (result.success) {
-        this.mostRecentMessageID = result.messageID
-
         return
       }
     } catch(error) {

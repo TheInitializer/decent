@@ -587,27 +587,42 @@ module.exports = async function attachAPI(app, {wss, db}) {
     }))
   })
 
-  app.get('/api/channel/:channelID/latest-messages(/before/:beforeMessageID)?', [
+  app.get('/api/channel/:channelID/latest-messages', [
     ...middleware.loadVarFromParams('channelID'),
     ...middleware.loadVarFromParams('beforeMessageID'),
     ...middleware.getChannelFromID('channelID', '_'), // Just to make sure the channel exists
-    ...middleware.runIfVarExists('beforeMessageID',
-      middleware.getMessageFromID('beforeMessageID', 'beforeMessage')
-    ),
 
     async (request, response) => {
-      const { channelID, beforeMessage } = request[middleware.vars]
+      const { channelID } = request[middleware.vars]
+      const { before: beforeMessageID, after: afterMessageID, n: numberMessages } = request.query
+
+      const beforeMessage = beforeMessageID ? await db.messages.findOne({_id: beforeMessageID}, {date: 1}) : null
+      const afterMessage  = afterMessageID  ? await db.messages.findOne({_id: afterMessageID},  {date: 1}) : null
 
       const query = {channelID}
-      if (beforeMessage) {
+      if (beforeMessage && afterMessage) {
+        response.status(400).end(JSON.stringify({
+          success: false,
+          error: 'invalid provision of both \'before\' and \'after\''
+        }))
+
+        return
+      } else if (beforeMessage) {
         query.date = {$lt: beforeMessage.date}
+      } else if (afterMessage) {
+        query.date = {$gt: afterMessage.date}
       }
 
       // TODO: If there is more than 50, show that somehow.
       // TODO: Store 50 as a constant somewhere?
       const cursor = db.messages.cfind(query)
+
       cursor.sort({date: -1})
-      cursor.limit(50)
+
+      if (numberMessages !== 'all') {
+        cursor.limit(parseInt(numberMessages) || 50)
+      }
+
       const messages = await cursor.exec()
       messages.reverse()
 
