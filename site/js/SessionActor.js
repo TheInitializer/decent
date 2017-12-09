@@ -7,7 +7,7 @@ export default class SessionActor extends Actor {
 
     // When we connect to a new server, update the UI.
     this.on('switch server', hostname => {
-      const currentServerEl = document.getElementById('server-current')
+      const currentServerEl = document.querySelector('#server-dropdown .dropdown-item.active')
       currentServerEl.innerText = hostname
     })
 
@@ -24,6 +24,8 @@ export default class SessionActor extends Actor {
         loginEl.style.display = 'none'
         logoutEl.style.removeProperty('display')
         formEl.style.removeProperty('display')
+
+        document.querySelector('.user-info .user-name').innerText = sessionObj.user.username
       } else {
         registerEl.style.removeProperty('display')
         loginEl.style.removeProperty('display')
@@ -32,7 +34,7 @@ export default class SessionActor extends Actor {
       }
     })
 
-    document.querySelector('#server-list .server-new').addEventListener('click', async evt => {
+    document.querySelector('#add-server').addEventListener('click', async evt => {
       evt.preventDefault()
       evt.stopPropagation()
 
@@ -49,19 +51,8 @@ export default class SessionActor extends Actor {
     })
 
     let serverListOpen = false
-    document.querySelector('.server-list-heading').addEventListener('click', async evt => {
-      const serverListEl = document.getElementById('server-list')
-
-      // Set CSS variable used for animation. Numbers here relate to
-      // the heights of different elements in #server-list.
-      //
-      // This must be arbitrarilly set based on the number of servers
-      // we should display in the list.
-      //
-      // Using variables for this is *significantly* better than the
-      // horrible, unreliable max-height: auto hack for animating height.
-      serverListEl.style.setProperty('--server-list-height',
-        ((Object.keys(this.sessionIDs).length + 1) * 54 + 32) + 'px')
+    document.querySelector('#server-dropdown .dropdown-item.active').addEventListener('click', async evt => {
+      const serverListEl = document.getElementById('server-dropdown')
 
       evt.preventDefault()
       evt.stopPropagation()
@@ -131,25 +122,33 @@ export default class SessionActor extends Actor {
 
   async rebuildServerList(servers) {
     const serverURLs = servers || Object.keys(this.sessionIDs)
-    const serverListEl = document.querySelector('#server-list')
-    const serverNewEl = serverListEl.querySelector('.server-new')
+    const serverListEl = document.getElementById('server-dropdown')
 
     // Cleanup
-    for (const el of serverListEl.querySelectorAll('.server-actual-option')) {
+    for (const el of serverListEl.querySelectorAll('.dropdown-item')) {
       el.remove()
     }
 
+    serverURLs.sort((a, b) => {
+      // Bubble the current server URL to the top
+      if (this.currentServerURL === a) {
+        return -1 // move b down
+      } else if (this.currentServerURL === b) {
+        return +1 // move a up
+      } else {
+        return 0 // do nothing
+      }
+    })
+
     // Build
     for (const url of serverURLs) {
-      if (url === this.currentServerURL) {
-        continue // See #server-current
-      }
-
       const el = document.createElement('div')
 
-      el.classList.add('server')
-      el.classList.add('server-selectable')
-      el.classList.add('server-actual-option')
+      el.classList.add('dropdown-item')
+
+      if (this.currentServerURL === url) {
+        el.classList.add('active')
+      }
 
       el.appendChild(document.createTextNode(url)) // TODO: get server name and display that instead
 
@@ -157,7 +156,7 @@ export default class SessionActor extends Actor {
         this.switchServer(url)
       })
 
-      serverListEl.insertBefore(el, serverNewEl)
+      serverListEl.appendChild(el)
     }
   }
 

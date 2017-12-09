@@ -7,37 +7,33 @@
   <aside id="server-sidebar" class="sidebar">
     <section class="user-info">
       <img class="user-icon" src="https://nonfree.news/img/avatar_nanalan.png">
-      <div class="user-name">nanalan</div>
+      <div class="user-name">&nbsp;</div>
     </section>
 
     <section class="sidebar-section">
       <h4 class="sidebar-subtitle">
         Server
+
+        <div class="sidebar-subtitle-icon" id="add-server">
+          +
+        </div>
       </h4>
 
       <div id="server-dropdown" class="dropdown">
-        <div id="server-dropdown-current" class="dropdown-current">localhost:3000</div>
+        <div class="dropdown-item active">&nbsp;</div>
       </div>
     </section>
 
     <section class="sidebar-section">
       <h4 class="sidebar-subtitle">
         Channels
+
+        <div class="sidebar-subtitle-icon" id="create-channel">
+          +
+        </div>
       </h4>
 
-      <ul class="location-list">
-        <li class="list-item list-item-channel active">
-          general
-        </li>
-
-        <li class="list-item list-item-channel">
-          shrimps
-        </li>
-
-        <li class="list-item list-item-channel notification">
-          shit-atfun-says
-        </li>
-      </ul>
+      <ul class="location-list" id="channel-list"></ul>
     </section>
 
     <section class="sidebar-section">
@@ -58,13 +54,6 @@
           Permissions
         </li>
       </ul>
-    </section>
-
-    <section class="sidebar-section" id="channels-sidebar-section">
-      <div class="sidebar-heading">
-        <b>Channels</b>
-        <button class="btn" id="create-channel">New</button>
-      </div>
     </section>
   </aside>
 

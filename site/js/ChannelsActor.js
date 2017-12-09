@@ -143,22 +143,18 @@ export default class ChannelsActor extends Actor {
   }
 
   async populateSidebarList(channels) {
-    const sidebarEl = document.querySelector('#channels-sidebar-section')
+    const listEl = document.querySelector('#channel-list')
 
-    // Remove old channels list
-    const oldListEl = sidebarEl.querySelector('#channels-list')
-    if (oldListEl) {
-      oldListEl.remove()
+    // Cleanup
+    for (const el of listEl.querySelectorAll('.list-item')) {
+      el.remove()
     }
-
-    // Create (new) channels list
-    const listEl = document.createElement('ul')
-    listEl.id = 'channels-list'
 
     for (const channel of channels) {
       const el = document.createElement('li')
-      el.classList.add('channel')
-      el.appendChild(document.createTextNode('#' + channel.name))
+      el.classList.add('list-item')
+      el.classList.add('list-item-channel')
+      el.appendChild(document.createTextNode(channel.name))
 
       if (channel.id === this.activeChannelID) {
         el.classList.add('active')
@@ -171,7 +167,5 @@ export default class ChannelsActor extends Actor {
 
       listEl.appendChild(el)
     }
-
-    sidebarEl.appendChild(listEl)
   }
 }
