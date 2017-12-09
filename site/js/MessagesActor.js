@@ -251,10 +251,16 @@ export default class MessagesActor extends Actor {
     // element to. If the last message group element's author is the author
     // of this current message, we'll reuse it; otherwise, we'll make a new
     // message group.
-    let messageGroupEl
+    //
+    // If the latest message group is older than one hour, then we'll make
+    // a new message group for this message anyway. FIXME
+    let messageGroupEl, isNewMessageGroup = true
     const lastMessageGroupEl = this.messagesContainer.lastChild
-    if (lastMessageGroupEl && lastMessageGroupEl.dataset.authorID === authorID) {
+    if (lastMessageGroupEl &&
+        lastMessageGroupEl.dataset.authorID === authorID &&
+        Date.now() <= Date.parse(lastMessageGroupEl.querySelector('time').dateTime) + 3600000) {
       messageGroupEl = lastMessageGroupEl
+      isNewMessageGroup = false
     } else {
       messageGroupEl = document.createElement('div')
       messageGroupEl.classList.add('message-group')
@@ -276,7 +282,7 @@ export default class MessagesActor extends Actor {
     el.setAttribute('id', 'message-' + messageID)
     el.dataset.author = authorID
     el.dataset.source = message.revisions[message.revisions.length - 1].text
-    el.appendChild(await this.buildMessageContent(message))
+    el.appendChild(await this.buildMessageContent(message, null, { showTime: isNewMessageGroup }))
     messageGroupEl.querySelector('.messages').appendChild(el)
 
     if (this.actors.session.isCurrentUser(authorID)) {
@@ -553,7 +559,7 @@ export default class MessagesActor extends Actor {
   // Builds the message content elements of a message. If the passed revision index
   // is set to null, or is greater than the number of revisions, the most recent
   // revision is used.
-  async buildMessageContent(message, revisionIndex = null) {
+  async buildMessageContent(message, revisionIndex = null, { showTime }) {
     const { authorUsername, date } = message
 
     if (!(revisionIndex in message.revisions)) {
@@ -576,6 +582,7 @@ export default class MessagesActor extends Actor {
 
     const time = document.createElement('time')
     time.setAttribute('datetime', dateObj.toISOString())
+
     time.appendChild(document.createTextNode(
       `${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}`
     ))
@@ -584,7 +591,10 @@ export default class MessagesActor extends Actor {
     contentEl.classList.add('message-content')
 
     el.appendChild(contentEl)
-    el.appendChild(time)
+
+    if (showTime) {
+      el.appendChild(time)
+    }
 
     if (message.revisions.length > 1) {
       let label
