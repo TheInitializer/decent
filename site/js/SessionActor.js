@@ -78,6 +78,7 @@ export default class SessionActor extends Actor {
       return false
     })
 
+    /*
     document.getElementById('register').addEventListener('click', () => {
       this.promptRegister()
     })
@@ -89,6 +90,7 @@ export default class SessionActor extends Actor {
     document.getElementById('logout').addEventListener('click', () => {
       this.loadSessionID('')
     })
+    */
   }
 
   bindToSocket(socket) {

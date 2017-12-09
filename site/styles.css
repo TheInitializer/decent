@@ -318,29 +318,38 @@ body, html, #app {
     .btn.btn-primary:hover{
       background: var(--accent-light); }
 
-#form-container {
+#message-editor {
+  margin-top: auto;
+  flex-shrink: 0;
+
   display: flex;
+  align-items: flex-end;
   flex-direction: row;
 
   -moz-user-select: none;
   -webkit-user-select: none;
   user-select: none;
 
-  padding: 5px;
-  background-color: var(--mute-dark);
-  color: var(--text-white); }
+  padding: 16px; }
 
-  #form-container #form {
-    flex-grow: 1;
+  #chat-input {
+    flex: 1 1 0;
+    padding: 16px;
+    margin-right: 16px;
 
-    display: inline-flex;
-    flex-direction: row;
+    height: var(--chat-input-height, 58px); /* set by JS */
+    min-height: 58px;
+    max-height: 400px;
+    overflow-y: auto;
 
-    margin: 0; }
+    font-size: 18px;
+    color: var(--gray-100);
+    background: var(--gray-900);
 
-    #form-container #form #chat-input {
-      resize: none;
-      flex-grow: 1; }
+    border: 1px solid var(--gray-500);
+    border-radius: 4px;
+    outline: none;
+    resize: none; }
 
 .main {
   flex: 1 0 0;

@@ -45,7 +45,11 @@ export default class MessagesActor extends Actor {
         shifted = true
       } else if (evt.keyCode === 13 && !shifted) {
         // Enter [no shift]
+        evt.preventDefault()
         this.submitFormAction(evt)
+
+        // Reset input height
+        chatInput.style.setProperty('--chat-input-height', '58px')
       } else if (evt.keyCode === 38) {
         // Up arrow
 
@@ -70,6 +74,11 @@ export default class MessagesActor extends Actor {
       // Unshift
       if (evt.keyCode === 16) {
         shifted = false
+      } else {
+        // Extend the height of the textarea to fit the content
+        // XXX: for some reason, using the `input` event for this
+        //      gets the scrollHeight very confused if content is removed
+        chatInput.style.setProperty('--chat-input-height', chatInput.scrollHeight + 2 + 'px')
       }
     })
   }
