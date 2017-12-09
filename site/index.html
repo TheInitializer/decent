@@ -4,24 +4,40 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css" integrity="sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb" crossorigin="anonymous">
 
 <div id="app">
-  <aside id="sidebar">
-    <section class="sidebar-section sidebar-section-light" id="server-list">
-      <div class="server server-list-heading-actual">Server list</div>
+  <aside id="server-sidebar" class="sidebar">
+    <section class="user-info">
+      <img class="user-icon" src="https://nonfree.news/img/avatar_nanalan.png">
+      <div class="user-name">nanalan</div>
+    </section>
 
-      <div class="server server-selectable server-list-heading">
-        <div id="server-current">Connecting...</div>
-        <img id="server-list-dropdown-icon" src="img/caret-down.svg">
-      </div>
+    <section class="sidebar-section">
+      <h4 class="sidebar-subtitle">
+        Server
+      </h4>
 
-      <div class="server server-selectable server-new">
-        + Add new
+      <div id="server-dropdown" class="dropdown">
+        <div id="server-dropdown-current" class="dropdown-current">localhost:3000</div>
       </div>
+    </section>
 
-      <!--
-      <div class="server server-selectable server-remove">
-        - Remove
-      </div>
-      -->
+    <section class="sidebar-section">
+      <h4 class="sidebar-subtitle">
+        Channels
+      </h4>
+
+      <ul class="location-list">
+        <li class="list-item list-item-channel active">
+          general
+        </li>
+
+        <li class="list-item list-item-channel">
+          shrimps
+        </li>
+
+        <li class="list-item list-item-channel notification">
+          shit-atfun-says
+        </li>
+      </ul>
     </section>
 
     <section class="sidebar-section" id="channels-sidebar-section">
