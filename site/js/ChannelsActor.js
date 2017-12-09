@@ -143,6 +143,11 @@ export default class ChannelsActor extends Actor {
   async viewChannel(channelID) {
     this.activeChannelID = channelID
     this.emit('update active channel', this.getChannelByID(channelID))
+
+    await post('mark-channel-as-read', {
+      sessionID: this.actors.session.sessionID,
+      channelID,
+    }, this.actors.session.currentServerURL)
   }
 
   async loadChannels() {
@@ -172,6 +177,10 @@ export default class ChannelsActor extends Actor {
       el.classList.add('channel')
       el.id = 'channel-' + channel.id
       el.appendChild(document.createTextNode('#' + channel.name))
+
+      if (channel.unreadMessageCount > 0) {
+        el.classList.add('channel-unread')
+      }
 
       if (channel.id === this.activeChannelID) {
         el.classList.add('active')
