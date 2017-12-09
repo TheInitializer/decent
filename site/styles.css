@@ -16,7 +16,11 @@
 
   --red: #f43259;
   --red-a2: #f4325933;
-  --red-a3: #f432594d; }
+  --red-a3: #f432594d;
+
+  --yellow: #e0b626;
+  --yellow-a2: #e0b62633;
+  --yellow-a3: #e0b6264d; }
 
 /*
 .theme-dark {
@@ -70,6 +74,19 @@ body, html, #app {
 #server-sidebar {
   border-right: 1px solid var(--gray-500);
   flex: 0 0 300px; }
+
+#user-sidebar {
+  display: flex;
+  flex-direction: column;
+
+  border-left: 1px solid var(--gray-500);
+  flex: 0 0 240px; }
+
+  #user-sidebar.collapsed {
+    flex-basis: 88px; }
+
+    #user-sidebar.collapsed .sidebar-subtitle {
+      text-align: center; }
 
 .sidebar {
   background: var(--gray-900);
@@ -325,91 +342,108 @@ body, html, #app {
       resize: none;
       flex-grow: 1; }
 
-#messages {
-  flex-grow: 1;
+.main {
+  flex: 1 0 0;
+  overflow-y: hidden;
+  background: var(--gray-700);
 
-  color: var(--white);
-  background-color: var(--mute-darker);
+  display: flex;
+  flex-direction: column; }
 
-  padding: 5px 40px;
-  overflow-y: scroll; }
+  #messages {
+    padding: 16px;
+    overflow-y: auto; }
 
-  .message-group {
-    padding: 6px 4px 4px 4px;
-    border-bottom: 1px solid var(--mute-light);
-    color: #EEE; }
+    .message-group {
+      display: flex;
+      align-items: flex-start;
 
-  .message-group-author {
-    font-weight: bold; }
+      margin-bottom: 16px;
+      font-size: 18px;
+      color: var(--gray-100); }
 
-  .message {
-    line-height: 1.5;
-    padding: 4px 0; }
+      .message-group-author {
+        flex: 0 0 100px;
+        margin-right: 8px;
+        font-weight: bold;
 
-    .message-content {
-      overflow-y: auto;
-      max-height: 500px; }
+        color: inherit;
+        text-decoration: none;
+        text-align: right; }
 
-  .message.created-by-us:hover {
-    background-color: rgba(255, 255, 255, 0.1); }
+      .messages {
+        flex: 1 0 0; }
 
-  .message-channelref {
-    color: var(--accent);
-    background-color: var(--accent-alpha1);
+        .message-revision-content {
+          display: flex; }
 
-    padding: 2px 5px;
-    margin: -2px;
-    border-radius: 2px;
+          .message-revision-content > time {
+            flex: 0 0 80px;
+            margin-left: auto;
+            padding-left: 16px;
 
-    cursor: pointer; }
+            color: var(--gray-300); }
 
-    .message-channelref:hover {
-      background-color: var(--accent-alpha2); }
+          .message-content {
+            line-height: 1.4;
+            word-wrap: break-word; }
 
-  .message-mention {
-    color: var(--color-yellow);
+            .message-format-b {
+              font-weight: bold; }
 
-    padding: 2px 5px;
-    margin: 4px -2px;
-    border-radius: 2px; }
+            .message-format-i {
+              font-style: italic; }
 
-  .message-mention-of-user {
-    color: var(--color-yellow);
-    background-color: var(--color-yellow-alpha1); }
+            .message-format-u {
+              text-decoration: underline; }
 
-    .message-mention-of-user:hover {
-      background-color: var(--color-yellow-alpha2); }
+            .message-format-s {
+              text-decoration: line-through; }
 
-  .message-inline-code {
-    color: white;
-    background-color: #232323; }
+            .message-latex-error {
+              font-weight: bold;
+              color: var(--text-red); }
 
-  .message time {
-    float: right; }
+            .message-channelref {
+              padding: 2px 4px;
+              margin: -2px 1px;
 
-  .message-content {
-    max-width: 100%;
-    word-wrap: break-word;
-    display: block; }
+              cursor: pointer;
 
-    .message-format-b {
-      font-weight: bold; }
+              line-height: 1.9;
+              text-decoration: none;
+              color: var(--green);
+              background: var(--green-a2);
 
-    .message-format-i {
-      font-style: italic; }
+              cursor: pointers;
+              border-radius: 4px; }
 
-    .message-format-u {
-      text-decoration: underline; }
+              .message-channelref:hover {
+                background: var(--green-a3); }
 
-    .message-format-s {
-      text-decoration: line-through; }
+            .message-mention {
+              padding: 2px 4px;
+              margin: -2px 1px;
 
-    .message-latex-error {
-      font-weight: bold;
-      color: var(--text-red); }
+              line-height: 1.9;
+              text-decoration: none;
+              color: var(--blue);
+              background: var(--blue-a2);
+
+              border-radius: 4px; }
+
+              /* XXX: is there a better way of showing of-us mentions? */
+              .message-mention-of-user {
+                color: var(--yellow);
+                background: var(--yellow-a2); }
+
+              /*
+              .message-mention:hover {
+                background: var(--blue-a3); }
+              */
 
 a {
-  color: #E080FF;
+  color: var(--blue);
   text-decoration: none; }
 
 time {

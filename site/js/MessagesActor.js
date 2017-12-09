@@ -570,11 +570,12 @@ export default class MessagesActor extends Actor {
     time.appendChild(document.createTextNode(
       `${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}`
     ))
-    el.appendChild(time)
 
     const contentEl = await this.formatMessageText(text)
     contentEl.classList.add('message-content')
+
     el.appendChild(contentEl)
+    el.appendChild(time)
 
     if (message.revisions.length > 1) {
       let label
