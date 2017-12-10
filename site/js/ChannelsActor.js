@@ -151,7 +151,9 @@ export default class ChannelsActor extends Actor {
   }
 
   async loadChannels() {
-    const { channels } = await get('channel-list', this.actors.session.currentServerURL)
+    const { channels } = await get(
+      'channel-list?sessionID=' + this.actors.session.sessionID,
+      this.actors.session.currentServerURL)
 
     this.channels = channels
     this.emit('update channel list', channels)
