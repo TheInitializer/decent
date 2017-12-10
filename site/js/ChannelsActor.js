@@ -142,7 +142,17 @@ export default class ChannelsActor extends Actor {
 
   async viewChannel(channelID) {
     this.activeChannelID = channelID
+    this.markAsRead(channelID) // XXX: when we add scrollback we may not want
+                               //      to always do this when the user switches channels
     this.emit('update active channel', this.getChannelByID(channelID))
+  }
+
+  async markAsRead(channelID) {
+    for (const channel of this.channels) {
+      if (channel.id === channelID) {
+        channel.unreadMessageCount = 0
+      }
+    }
 
     await post('mark-channel-as-read', {
       sessionID: this.actors.session.sessionID,
