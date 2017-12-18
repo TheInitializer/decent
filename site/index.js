@@ -1,447 +1,456 @@
 'use strict'
 
-// Utility functions //////////////////////////////////////////////////////////
+async function main() {
 
-async function fetchHelper(path, fetchConfig = {}) {
-  if (!serverURL.value) {
-    throw new Error({
-      error: 'client error - server URL not specified yet'
+  // Utility functions ////////////////////////////////////////////////////////
+
+  async function fetchHelper(path, fetchConfig = {}) {
+    if (!serverURL.value) {
+      throw new Error({
+        error: 'client error - server URL not specified yet'
+      })
+    }
+
+    const base = serverURL.value
+
+    const result =
+      await fetch(base + '/api/' + path, fetchConfig)
+      .then(res => res.json())
+
+    // There's no way we can gracefully stop the above caller, so
+    // we'll just throw an error.
+    if (serverURL.value !== base) {
+      const error = 'client error - changed server while fetching'
+      throw Object.assign(
+        new Error(error + ' ' + path),
+        {data: {error, path}})
+    }
+
+    if (result.error) {
+      throw Object.assign(
+        new Error(result.error),
+        {data: result})
+    }
+
+    return result
+  }
+
+  function post(path, dataObj) {
+    return fetchHelper(path, {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(dataObj)
     })
   }
 
-  const base = serverURL.value
+  function get(path, query = {}) {
+    const esc = encodeURIComponent
+    const queryString = Object.keys(query).length > 0
+      ? '?' + Object.keys(query)
+        .map(k => esc(k) + '=' + esc(query[k]))
+        .join('&')
+      : ''
 
-  const result =
-    await fetch(base + '/api/' + path, fetchConfig)
-    .then(res => res.json())
-
-  // There's no way we can gracefully stop the above caller, so
-  // we'll just throw an error.
-  if (serverURL.value !== base) {
-    const error = 'client error - changed server while fetching'
-    throw Object.assign(
-      new Error(error + ' ' + path),
-      {data: {error, path}})
+    return fetchHelper(path + queryString)
   }
 
-  if (result.error) {
-    throw Object.assign(
-      new Error(result.error),
-      {data: result})
-  }
+  const serverDict = new oof.Dictionary()
+  const activeServerHostname = new oof.Value()
+  const activeServer = new oof.Reference(serverDict, activeServerHostname)
+  const activeChannelID = new oof.Value()
+  const sessionID = new oof.Reference(activeServer, 'sessionID')
 
-  return result
-}
-
-function post(path, dataObj) {
-  return fetchHelper(path, {
-    method: 'post',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(dataObj)
+  const serverURL = new oof.Computed([activeServerHostname], hostname => {
+    if (hostname) {
+      return '//' + hostname
+    } else {
+      return null
+    }
   })
-}
 
-function get(path, query = {}) {
-  const esc = encodeURIComponent
-  const queryString = Object.keys(query).length > 0
-    ? '?' + Object.keys(query)
-      .map(k => esc(k) + '=' + esc(query[k]))
-      .join('&')
-    : ''
+  await serverURL.update()
 
-  return fetchHelper(path + queryString)
-}
+  const serverChannels = new oof.Computed([serverURL], async url => {
+    if (url) {
+      return (await get('channel-list')).channels
+    } else {
+      return []
+    }
+  })
 
-// General client state ///////////////////////////////////////////////////////
+  await serverChannels.update()
 
-const serverDict = new oof.Dictionary()
-const activeServerHostname = new oof.Value()
-const activeServer = new oof.Reference(serverDict, activeServerHostname)
-const activeChannelID = new oof.Value()
-const sessionID = new oof.Reference(activeServer, 'sessionID')
+  const sessionUser = new oof.Computed([sessionID], async sid => {
+    if (sid === null) {
+      return null
+    }
 
-const serverURL = new oof.Computed([activeServerHostname], hostname => {
-  if (hostname) {
-    return '//' + hostname
-  } else {
-    return null
-  }
-})
+    const result = await get('session/' + sid)
 
-const serverChannels = new oof.Computed([serverURL], async url => {
-  if (url) {
-    return (await get('channel-list')).channels
-  } else {
-    return []
-  }
-})
+    // Don't set the session user if we changed to a different user while
+    // downloading the session data!
+    if (sessionID.value !== sid) {
+      return sessionUser.value
+    }
 
-const sessionUser = new oof.Computed([sessionID], async sid => {
-  if (sid === null) {
-    return null
-  }
+    return result.user
+  })
 
-  const result = await get('session/' + sid)
+  await sessionUser.update()
 
-  // Don't set the session user if we changed to a different user while
-  // downloading the session data!
-  if (sessionID.value !== sid) {
-    return sessionUser.value
-  }
+  const sessionUsername = new oof.Computed([sessionUser], user => {
+    return user && user.username
+  })
 
-  return result.user
-})
+  // WebSocket event handling and setup ///////////////////////////////////////
 
-const sessionUsername = new oof.Computed([sessionUser], user => {
-  return user && user.username
-})
+  function addServer(serverHostname) {
+    if (Object.keys(serverDict).includes(serverHostname) === false) {
+      serverDict[serverHostname] = new oof.Dictionary({
+        sessionID: null
+      })
 
-// WebSocket event handling and setup /////////////////////////////////////////
+      const socket = ws.connectTo(serverHostname, {
+        onMessage: (evt, data) => {
+          if (evt !== 'ping for data') {
+            console.log('socket:', evt, data)
+          }
 
-function addServer(serverHostname) {
-  if (Object.keys(serverDict).includes(serverHostname) === false) {
-    serverDict[serverHostname] = new oof.Dictionary({
-      sessionID: null
-    })
+          if (evt === 'ping for data') {
+            socket.send(JSON.stringify({evt: 'pong data', data: {
+              sessionID: sessionID.value
+            }}))
+          }
 
-    const socket = ws.connectTo(serverHostname, {
-      onMessage: (evt, data) => {
-        if (evt !== 'ping for data') {
-          console.log('socket:', evt, data)
+          if (evt === 'received chat message' && data && data.message) {
+            appendMessage(data.message)
+          }
+
+          if (evt === 'created new channel' && data && data.channel) {
+            sidebarChannelList.append(data.channel)
+          }
         }
+      })
 
-        if (evt === 'ping for data') {
-          socket.send(JSON.stringify({evt: 'pong data', data: {
-            sessionID: sessionID.value
-          }}))
-        }
+      serverDict[serverHostname].socket = socket
+    }
 
-        if (evt === 'received chat message' && data && data.message) {
-          appendMessage(data.message)
-        }
-
-        if (evt === 'created new channel' && data && data.channel) {
-          sidebarChannelList.append(data.channel)
-        }
-      }
-    })
-
-    serverDict[serverHostname].socket = socket
+    activeServerHostname.set(serverHostname)
   }
 
-  activeServerHostname.set(serverHostname)
-}
+  // Session user info ////////////////////////////////////////////////////////
 
-// Session user info //////////////////////////////////////////////////////////
+  class Sidebar extends oof.El {
+    init({serverChannels}) {
+      Object.assign(this, {serverChannels})
 
-class Sidebar extends oof.El {
-  init({serverChannels}) {
-    Object.assign(this, {serverChannels})
+      return [serverChannels]
+    }
 
-    return [serverChannels]
-  }
-
-  render() {
-    return el('.sidebar', [
-      el('.sidebar-section.sidebar-section-server', [
-        el('.sidebar-subtitle', [
-          el('h4', 'Server'),
-          el('button.sidebar-subtitle-button', {
-            on_click: () => this.clickedAddServer()
-          }, '+ Add')
+    render() {
+      return el('.sidebar', [
+        el('.sidebar-section.sidebar-section-server', [
+          el('.sidebar-subtitle', [
+            el('h4', 'Server'),
+            el('button.sidebar-subtitle-button', {
+              on_click: () => this.clickedAddServer()
+            }, '+ Add')
+          ]),
         ]),
-      ]),
 
-      el('.sidebar-section', [
-        el('.sidebar-subtitle', [
-          el('h4', 'Channels'),
-          el('button.sidebar-subtitle-button', {
-            on_click: () => {
-              alert('add channel')
-            }
-          }, '+ Add')
-        ]),
-        el('.location-list', this.serverChannels.value.map(
-          channel => el('a.list-item.list-item-channel', {
-            href: '#',
-            on_click: () => {
-              alert('select channel')
-            }
-          }, channel.name)
-        ))
+        el('.sidebar-section', [
+          el('.sidebar-subtitle', [
+            el('h4', 'Channels'),
+            el('button.sidebar-subtitle-button', {
+              on_click: () => {
+                alert('add channel')
+              }
+            }, '+ Add')
+          ]),
+          el('.location-list', this.serverChannels.value.map(
+            channel => el('a.list-item.list-item-channel', {
+              href: '#',
+              on_click: () => {
+                alert('select channel')
+              }
+            }, channel.name)
+          ))
+        ])
       ])
-    ])
-  }
+    }
 
-  clickedAddServer() {
-    const host = prompt('Host URL?')
+    clickedAddServer() {
+      const host = prompt('Host URL?')
 
-    if (host) {
-      addServer(host)
+      if (host) {
+        addServer(host)
+      }
     }
   }
-}
 
-const sidebar = new Sidebar('#sidebar-container', {serverChannels})
+  const sidebar = new Sidebar('#sidebar-container', {serverChannels})
 
-/*
+  /*
 
-oof.mini('.user-info-name', name => el('a.user-info-name', name), sessionUsername)
+  oof.mini('.user-info-name', name => el('a.user-info-name', name), sessionUsername)
 
-sessionUser.onChange(user => {
-  if (user) {
-    sidebar.classList.add('is-logged-in')
-    sidebar.classList.remove('is-logged-out')
+  sessionUser.onChange(user => {
+    if (user) {
+      sidebar.classList.add('is-logged-in')
+      sidebar.classList.remove('is-logged-out')
 
-    if (user.permissionLevel === 'admin') {
-      sidebar.classList.add('is-admin')
+      if (user.permissionLevel === 'admin') {
+        sidebar.classList.add('is-admin')
+      } else {
+        sidebar.classList.remove('is-admin')
+      }
     } else {
+      sidebar.classList.add('is-logged-out')
+      sidebar.classList.remove('is-logged-in')
       sidebar.classList.remove('is-admin')
     }
-  } else {
-    sidebar.classList.add('is-logged-out')
-    sidebar.classList.remove('is-logged-in')
-    sidebar.classList.remove('is-admin')
-  }
-})
+  })
 
-// Channel list, add channel //////////////////////////////////////////////////
+  // Channel list, add channel ////////////////////////////////////////////////
 
-const sidebarChannelList = oof.mutableList(channel => {
-  return oof('a.list-item.list-item-channel', {
-    href: '#'
-  }, [channel.name])
-    .on('click', () => {
-      activeChannelID.set(channel.id)
-    })
-}).mount('#sidebar-channel-list')
+  const sidebarChannelList = oof.mutableList(channel => {
+    return oof('a.list-item.list-item-channel', {
+      href: '#'
+    }, [channel.name])
+      .on('click', () => {
+        activeChannelID.set(channel.id)
+      })
+  }).mount('#sidebar-channel-list')
 
-serverURL.onChange(async url => {
-  let channels
-  if (url) {
-    channels = (await get('channel-list')).channels
-  } else {
-    channels = []
-  }
+  serverURL.onChange(async url => {
+    let channels
+    if (url) {
+      channels = (await get('channel-list')).channels
+    } else {
+      channels = []
+    }
 
-  sidebarChannelList.clear()
+    sidebarChannelList.clear()
 
-  for (const channel of channels) {
-    sidebarChannelList.append(channel)
-  }
-})
+    for (const channel of channels) {
+      sidebarChannelList.append(channel)
+    }
+  })
 
-document.getElementById('create-channel').addEventListener('click', async () => {
-  if (!sessionUser.value || sessionUser.value.permissionLevel !== 'admin') {
-    alert('You must be a server admin to create a channel.')
-    return
-  }
+  document.getElementById('create-channel').addEventListener('click', async () => {
+    if (!sessionUser.value || sessionUser.value.permissionLevel !== 'admin') {
+      alert('You must be a server admin to create a channel.')
+      return
+    }
 
-  const name = prompt('Channel name?')
+    const name = prompt('Channel name?')
 
-  if (name) {
-    await post('create-channel', {
-      name, sessionID: sessionID.value
-    })
-  }
-})
+    if (name) {
+      await post('create-channel', {
+        name, sessionID: sessionID.value
+      })
+    }
+  })
 
-// Server list, add server ////////////////////////////////////////////////////
+  // Server list, add server //////////////////////////////////////////////////
 
-oof.mutable(host => host, activeServerHostname)
-  .mount(document.querySelector('.server-dropdown-current'))
+  oof.mutable(host => host, activeServerHostname)
+    .mount(document.querySelector('.server-dropdown-current'))
 
-const serverDropdown = document.querySelector('.server-dropdown')
-serverDropdown.addEventListener('click', () => {
-  serverDropdown.classList.toggle('open')
-})
+  const serverDropdown = document.querySelector('.server-dropdown')
+  serverDropdown.addEventListener('click', () => {
+    serverDropdown.classList.toggle('open')
+  })
 
-const serverList = oof.mutableList(server => {
-  return oof('.server-dropdown-option', {}, [server.hostname])
-    .on('click', () => {
-      activeServerHostname.set(server.hostname)
-    })
-}).mount(serverDropdown.querySelector('.server-dropdown-panel'))
+  const serverList = oof.mutableList(server => {
+    return oof('.server-dropdown-option', {}, [server.hostname])
+      .on('click', () => {
+        activeServerHostname.set(server.hostname)
+      })
+  }).mount(serverDropdown.querySelector('.server-dropdown-panel'))
 
-serverList.clear()
+  serverList.clear()
 
-document.getElementById('add-server').addEventListener('click', () => {
-})
+  document.getElementById('add-server').addEventListener('click', () => {
+  })
 
-// Message groups /////////////////////////////////////////////////////////////
+  // Message groups ///////////////////////////////////////////////////////////
 
-const messageGroupList = oof.mutableList(messageGroup => {
-  const el = oof('.message-group', {}, [
-    oof('img.message-group-icon', {
-      src: 'https://cdn2.scratch.mit.edu/get_image/user/907223_90x90.png'
-    }),
-    oof('.message-group-content', {}, [
-      oof('.message-group-info', {}, [
-        oof('.message-group-name', {}, [messageGroup.authorUsername]),
-        oof('time.message-group-date', {}, [messageGroup.date.toString()])
-      ]),
-      oof('.message-group-messages')
+  const messageGroupList = oof.mutableList(messageGroup => {
+    const el = oof('.message-group', {}, [
+      oof('img.message-group-icon', {
+        src: 'https://cdn2.scratch.mit.edu/get_image/user/907223_90x90.png'
+      }),
+      oof('.message-group-content', {}, [
+        oof('.message-group-info', {}, [
+          oof('.message-group-name', {}, [messageGroup.authorUsername]),
+          oof('time.message-group-date', {}, [messageGroup.date.toString()])
+        ]),
+        oof('.message-group-messages')
+      ])
     ])
-  ])
 
-  messageGroup.messages.mount(el.querySelector('.message-group-messages'))
+    messageGroup.messages.mount(el.querySelector('.message-group-messages'))
 
-  return el
-}).mount('#content > .messages')
+    return el
+  }).mount('#content > .messages')
 
-activeChannelID.onChange(async channelID => {
-  messageGroupList.clear()
+  activeChannelID.onChange(async channelID => {
+    messageGroupList.clear()
 
-  const result = await get(`channel/${channelID}/latest-messages`)
+    const result = await get(`channel/${channelID}/latest-messages`)
 
-  // Cancel if the user changed the selected channel while we were downloading
-  // the latest messages.
-  if (activeChannelID.value !== channelID) {
-    return
-  }
+    // Cancel if the user changed the selected channel while we were downloading
+    // the latest messages.
+    if (activeChannelID.value !== channelID) {
+      return
+    }
 
-  // Clear the list again, just in case the user double-clicked, which would
-  // cause duplicate messages to show up.
-  messageGroupList.clear()
+    // Clear the list again, just in case the user double-clicked, which would
+    // cause duplicate messages to show up.
+    messageGroupList.clear()
 
-  const { messages } = result
+    const { messages } = result
 
-  for (const message of messages) {
-    appendMessage(message)
-  }
-})
+    for (const message of messages) {
+      appendMessage(message)
+    }
+  })
 
-function appendMessage(message) {
-  // Check if we're scrolled to the bottom. We need to know that to decide whether
-  // or not to scroll down after appending this message (which we do to keep up
-  // with chat). There's a threshold so you don't have to be scrolled to *exactly*
-  // the bottom of the element.
-  const el = document.querySelector('#content .messages')
-  const wasScrolledToBottom = el.scrollTop > el.scrollHeight - el.offsetHeight - 25
+  function appendMessage(message) {
+    // Check if we're scrolled to the bottom. We need to know that to decide whether
+    // or not to scroll down after appending this message (which we do to keep up
+    // with chat). There's a threshold so you don't have to be scrolled to *exactly*
+    // the bottom of the element.
+    const el = document.querySelector('#content .messages')
+    const wasScrolledToBottom = el.scrollTop > el.scrollHeight - el.offsetHeight - 25
 
-  const lastGroup = messageGroupList.getLast()
-  const shouldAddToLast = lastGroup &&
-    lastGroup.authorID === message.authorID &&
-    lastGroup.messages.length < 20
+    const lastGroup = messageGroupList.getLast()
+    const shouldAddToLast = lastGroup &&
+      lastGroup.authorID === message.authorID &&
+      lastGroup.messages.length < 20
 
-  if (shouldAddToLast) {
-    lastGroup.messages.append(message)
-  } else {
-    messageGroupList.append({
-      authorID: message.authorID.toString(),
-      authorUsername: message.authorUsername.toString(),
-      date: new Date(message.date),
-      messages: oof.mutableList(message => {
-        return oof('.message', {}, [message.text.toString()])
-      }, [message])
-    })
-  }
+    if (shouldAddToLast) {
+      lastGroup.messages.append(message)
+    } else {
+      messageGroupList.append({
+        authorID: message.authorID.toString(),
+        authorUsername: message.authorUsername.toString(),
+        date: new Date(message.date),
+        messages: oof.mutableList(message => {
+          return oof('.message', {}, [message.text.toString()])
+        }, [message])
+      })
+    }
 
-  if (wasScrolledToBottom) {
-    el.scrollTop = el.scrollHeight
-  }
-}
-
-// Sending messages ///////////////////////////////////////////////////////////
-
-document.querySelector('#content .message-editor-button')
-  .addEventListener('click', () => sendMessageFromInput())
-
-const messageInput = document.querySelector('#content .message-editor-input')
-messageInput.addEventListener('keydown', evt => {
-  if (evt.keyCode === 13) {
-    evt.preventDefault()
-    sendMessageFromInput()
-  }
-})
-
-async function sendMessageFromInput() {
-  if (!sessionID.value) {
-    alert('Please sign in before sending a message.')
-    return
-  }
-
-  if (!activeChannelID.value) {
-    alert('Please join a channel before sending a message.')
-    return
-  }
-
-  const text = messageInput.value
-
-  messageInput.value = ''
-
-  try {
-    await post('send-message', {
-      sessionID: sessionID.value,
-      channelID: activeChannelID.value,
-      text
-    })
-  } catch(error) {
-    console.error(error)
-    if (confirm(
-      'Failed to send message! Recover it?\nError: ' + error.message
-    )) {
-      messageInput.value = text
+    if (wasScrolledToBottom) {
+      el.scrollTop = el.scrollHeight
     }
   }
-}
 
-// Login, logout, register ////////////////////////////////////////////////////
+  // Sending messages /////////////////////////////////////////////////////////
 
-document.getElementById('login').addEventListener('click', async () => {
-  if (!activeServer.value) {
-    alert('Please select a server before logging in.')
-    return
-  }
+  document.querySelector('#content .message-editor-button')
+    .addEventListener('click', () => sendMessageFromInput())
 
-  const username = prompt('Username?')
-  const password = prompt('Password? (Insert speel about DON\'T SEND SENSITIVE PASSWORDS OVER HTTP here)')
+  const messageInput = document.querySelector('#content .message-editor-input')
+  messageInput.addEventListener('keydown', evt => {
+    if (evt.keyCode === 13) {
+      evt.preventDefault()
+      sendMessageFromInput()
+    }
+  })
 
-  if (username && password) {
+  async function sendMessageFromInput() {
+    if (!sessionID.value) {
+      alert('Please sign in before sending a message.')
+      return
+    }
+
+    if (!activeChannelID.value) {
+      alert('Please join a channel before sending a message.')
+      return
+    }
+
+    const text = messageInput.value
+
+    messageInput.value = ''
+
     try {
-      const result = await post('login', {username, password})
-      activeServer.value.sessionID = result.sessionID
-    } catch (error) {
+      await post('send-message', {
+        sessionID: sessionID.value,
+        channelID: activeChannelID.value,
+        text
+      })
+    } catch(error) {
       console.error(error)
-      alert('Error logging in: ' + error.message)
+      if (confirm(
+        'Failed to send message! Recover it?\nError: ' + error.message
+      )) {
+        messageInput.value = text
+      }
     }
   }
-})
 
-document.getElementById('logout').addEventListener('click', async () => {
-  if (!activeServer.value || !sessionID.value) {
-    return
-  }
+  // Login, logout, register //////////////////////////////////////////////////
 
-  activeServer.value.sessionID = null
-})
-
-document.getElementById('register').addEventListener('click', async () => {
-  if (!activeServer.value) {
-    alert('Please select a server before registering.')
-    return
-  }
-
-  const username = prompt('Username?')
-  const password = prompt('Password? (PLEASE be careful not to use a sensitive password if you are on an HTTP connection.)')
-
-  if (username && password) {
-    try {
-      const result = await post('register', {username, password})
-      alert(`Account ${username} successfully registered! Please click on the login button.`)
-    } catch (error) {
-      console.error(error)
-      alert('Error registering: ' + error.message)
+  document.getElementById('login').addEventListener('click', async () => {
+    if (!activeServer.value) {
+      alert('Please select a server before logging in.')
+      return
     }
+
+    const username = prompt('Username?')
+    const password = prompt('Password? (Insert speel about DON\'T SEND SENSITIVE PASSWORDS OVER HTTP here)')
+
+    if (username && password) {
+      try {
+        const result = await post('login', {username, password})
+        activeServer.value.sessionID = result.sessionID
+      } catch (error) {
+        console.error(error)
+        alert('Error logging in: ' + error.message)
+      }
+    }
+  })
+
+  document.getElementById('logout').addEventListener('click', async () => {
+    if (!activeServer.value || !sessionID.value) {
+      return
+    }
+
+    activeServer.value.sessionID = null
+  })
+
+  document.getElementById('register').addEventListener('click', async () => {
+    if (!activeServer.value) {
+      alert('Please select a server before registering.')
+      return
+    }
+
+    const username = prompt('Username?')
+    const password = prompt('Password? (PLEASE be careful not to use a sensitive password if you are on an HTTP connection.)')
+
+    if (username && password) {
+      try {
+        const result = await post('register', {username, password})
+        alert(`Account ${username} successfully registered! Please click on the login button.`)
+      } catch (error) {
+        console.error(error)
+        alert('Error registering: ' + error.message)
+      }
+    }
+  })
+
+  // Final initialization /////////////////////////////////////////////////////
+
+  if (!location.hostname.endsWith('.github.io')) {
+    addServer(location.host) // .host includes the port!
   }
-})
 
-// Final initialization ///////////////////////////////////////////////////////
-
-if (!location.hostname.endsWith('.github.io')) {
-  addServer(location.host) // .host includes the port!
+  */
 }
 
-*/
+main().catch(error => console.error(error))
