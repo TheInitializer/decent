@@ -143,10 +143,8 @@ async function main() {
   // Session user info ////////////////////////////////////////////////////////
 
   class Sidebar extends oof.El {
-    init({serverChannels}) {
-      Object.assign(this, {serverChannels})
-
-      return [serverChannels]
+    init() {
+      return [serverChannels, sessionUser]
     }
 
     render() {
@@ -158,6 +156,25 @@ async function main() {
               on_click: () => this.clickedAddServer()
             }, '+ Add')
           ]),
+          el('.user-info', [
+            ...sessionUser.value ? [
+              el('.user-info-text', [
+                'Logged in as ',
+                el('a.user-info-name', {href: '#'}, sessionUser.value.username)
+              ]),
+              el('button', {
+                on_click: () => this.clickedLogOut()
+              }, 'Log out')
+            ] : [
+              el('.user-info-text', 'Logged out'),
+              el('button', {
+                on_click: () => this.clickedRegister()
+              }, 'Register'),
+              el('button.minor', {
+                on_click: () => this.clickedLogin()
+              }, 'Log in')
+            ]
+          ])
         ]),
 
         el('.sidebar-section', [
@@ -169,7 +186,7 @@ async function main() {
               }
             }, '+ Add')
           ]),
-          el('.location-list', this.serverChannels.value.map(
+          el('.location-list', serverChannels.value.map(
             channel => el('a.list-item.list-item-channel', {
               href: '#',
               on_click: () => {
@@ -188,9 +205,59 @@ async function main() {
         addServer(host)
       }
     }
+
+    async clickedLogin() {
+      if (!activeServer.value) {
+        alert('Please select a server before logging in.')
+        return
+      }
+
+      const username = prompt('Username?')
+      const password = prompt('Password? (Insert speel about DON\'T SEND SENSITIVE PASSWORDS OVER HTTP here)')
+
+      if (username && password) {
+        try {
+          const result = await post('login', {username, password})
+          activeServer.value.sessionID = result.sessionID
+        } catch (error) {
+          console.error(error)
+          alert('Error logging in: ' + error.message)
+        }
+      }
+    }
+
+    async clickedRegister() {
+      if (!activeServer.value) {
+        alert('Please select a server before registering.')
+        return
+      }
+
+      const username = prompt('Username?')
+      const password = prompt('Password? (PLEASE be careful not to use a sensitive password if you are on an HTTP connection.)')
+
+      if (username && password) {
+        try {
+          const result = await post('register', {username, password})
+          alert(`Account ${username} successfully registered! Please click on the login button.`)
+        } catch (error) {
+          console.error(error)
+          alert('Error registering: ' + error.message)
+        }
+      }
+    }
+
+    async clickedLogOut() {
+      if (!activeServer.value || !sessionID.value) {
+        return
+      }
+
+      activeServer.value.sessionID = null
+    }
   }
 
-  const sidebar = new Sidebar('#sidebar-container', {serverChannels})
+  const sidebar = new Sidebar('#sidebar-container', {
+    serverChannels, sessionUser, activeServer
+  })
 
   /*
 
@@ -393,64 +460,13 @@ async function main() {
       }
     }
   }
-
-  // Login, logout, register //////////////////////////////////////////////////
-
-  document.getElementById('login').addEventListener('click', async () => {
-    if (!activeServer.value) {
-      alert('Please select a server before logging in.')
-      return
-    }
-
-    const username = prompt('Username?')
-    const password = prompt('Password? (Insert speel about DON\'T SEND SENSITIVE PASSWORDS OVER HTTP here)')
-
-    if (username && password) {
-      try {
-        const result = await post('login', {username, password})
-        activeServer.value.sessionID = result.sessionID
-      } catch (error) {
-        console.error(error)
-        alert('Error logging in: ' + error.message)
-      }
-    }
-  })
-
-  document.getElementById('logout').addEventListener('click', async () => {
-    if (!activeServer.value || !sessionID.value) {
-      return
-    }
-
-    activeServer.value.sessionID = null
-  })
-
-  document.getElementById('register').addEventListener('click', async () => {
-    if (!activeServer.value) {
-      alert('Please select a server before registering.')
-      return
-    }
-
-    const username = prompt('Username?')
-    const password = prompt('Password? (PLEASE be careful not to use a sensitive password if you are on an HTTP connection.)')
-
-    if (username && password) {
-      try {
-        const result = await post('register', {username, password})
-        alert(`Account ${username} successfully registered! Please click on the login button.`)
-      } catch (error) {
-        console.error(error)
-        alert('Error registering: ' + error.message)
-      }
-    }
-  })
+  */
 
   // Final initialization /////////////////////////////////////////////////////
 
   if (!location.hostname.endsWith('.github.io')) {
     addServer(location.host) // .host includes the port!
   }
-
-  */
 }
 
 main().catch(error => console.error(error))

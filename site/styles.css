@@ -96,26 +96,26 @@ button {
   text-decoration: none;
 }
 
-.user-info-button {
+.user-info > button {
   background: var(--blue-a2);
   color: var(--blue);
   font-family: var(--font-stack);
   font-size: 12px;
 }
 
-.user-info-button:hover,
-.user-info-button:focus {
+.user-info > button:hover,
+.user-info > button:focus {
   background: var(--blue-a3);
 }
 
-.user-info-button-minor {
+.user-info > button.minor {
   background: var(--gray-700);
   color: var(--gray-300);
   margin-left: 8px;
 }
 
-.user-info-button-minor:hover,
-.user-info-button-minor:focus {
+.user-info > button.minor:hover,
+.user-info > button.minor:focus {
   background: var(--gray-700);
   color: var(--gray-100);
 }
