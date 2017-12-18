@@ -54,7 +54,7 @@ button {
 ************ SERVER SIDEBAR *************
 ****************************************/
 
-#server-sidebar {
+.sidebar {
   flex: 0 0 300px;
   overflow-y: auto;
 
@@ -70,13 +70,6 @@ button {
             user-select: none; /* Non-prefixed version, currently
                                   supported by Chrome and Opera */
 }
-
-#server-sidebar.is-logged-in .logged-in { display: initial; }
-#server-sidebar.is-logged-out .logged-in { display: none; }
-#server-sidebar.is-logged-in .logged-out { display: none; }
-#server-sidebar.is-logged-out .logged-out { display: initial; }
-#server-sidebar.is-admin .admin { display: initial; }
-#server-sidebar:not(.is-admin) .admin { display: none; }
 
 .sidebar-section-server {
   padding-bottom: 16px;

@@ -6,7 +6,8 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <div id="server-sidebar" class="is-logged-out">
+    <div id="sidebar-container">
+      <!--
       <div class="sidebar-section sidebar-section-server">
         <div class="sidebar-subtitle">
           <h4>Server</h4>
@@ -22,7 +23,7 @@
           </div>
         </div>
         <div class="user-info">
-          <div class="user-info-text logged-in">Logged in as <a href="#" class="user-info-name">PullJosh</a></div>
+          <div class="user-info-text logged-in">Logged in as <a href="#" class="user-info-name"></a></div>
           <div class="user-info-text logged-out">Logged out</div>
           <button id="logout" class="user-info-button logged-in">Log out</button>
           <button id="register" class="user-info-button logged-out">Register</button>
@@ -36,8 +37,6 @@
         </div>
         <div id="sidebar-channel-list" class="location-list"></div>
       </div>
-
-      <!--
       <div class="sidebar-section">
         <div class="sidebar-subtitle"><h4>Server Settings</h4></div>
         <div class="location-list">
@@ -56,7 +55,6 @@
         </div>
       </div>
       -->
-
     </div>
     <div id="content" class="main">
       <div class="messages"></div>
@@ -117,8 +115,8 @@
     <div class="modal-page-cover"><!-- Darkens background behind modal --></div>
 
     <script src="js/websocket.js"></script>
+    <script src="justel/justel.js"></script>
     <script src="oof/oof.js"></script>
-    <script src="oof/state.js"></script>
     <script src="index.js"></script>
   </body>
 </html>

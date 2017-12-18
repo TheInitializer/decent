@@ -1,3 +1,6 @@
 [submodule "site/oof"]
 	path = site/oof
 	url = https://github.com/heyitsmeuralex/oof
+[submodule "site/justel"]
+	path = site/justel
+	url = https://github.com/heyitsmeuralex/justel

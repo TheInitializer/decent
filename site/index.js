@@ -56,13 +56,13 @@ function get(path, query = {}) {
 
 // General client state ///////////////////////////////////////////////////////
 
-const serverDict = new Dictionary()
-const activeServerHostname = new Value()
-const activeServer = new Reference(serverDict, activeServerHostname)
-const activeChannelID = new Value()
-const sessionID = new Reference(activeServer, 'sessionID')
+const serverDict = new oof.Dictionary()
+const activeServerHostname = new oof.Value()
+const activeServer = new oof.Reference(serverDict, activeServerHostname)
+const activeChannelID = new oof.Value()
+const sessionID = new oof.Reference(activeServer, 'sessionID')
 
-const serverURL = new Computed([activeServerHostname], hostname => {
+const serverURL = new oof.Computed([activeServerHostname], hostname => {
   if (hostname) {
     return '//' + hostname
   } else {
@@ -70,7 +70,15 @@ const serverURL = new Computed([activeServerHostname], hostname => {
   }
 })
 
-const sessionUser = new Computed([sessionID], async sid => {
+const serverChannels = new oof.Computed([serverURL], async url => {
+  if (url) {
+    return (await get('channel-list')).channels
+  } else {
+    return []
+  }
+})
+
+const sessionUser = new oof.Computed([sessionID], async sid => {
   if (sid === null) {
     return null
   }
@@ -86,7 +94,7 @@ const sessionUser = new Computed([sessionID], async sid => {
   return result.user
 })
 
-const sessionUsername = new Computed([sessionUser], user => {
+const sessionUsername = new oof.Computed([sessionUser], user => {
   return user && user.username
 })
 
@@ -94,11 +102,9 @@ const sessionUsername = new Computed([sessionUser], user => {
 
 function addServer(serverHostname) {
   if (Object.keys(serverDict).includes(serverHostname) === false) {
-    serverDict[serverHostname] = new Dictionary({
+    serverDict[serverHostname] = new oof.Dictionary({
       sessionID: null
     })
-
-    serverList.append({hostname: serverHostname})
 
     const socket = ws.connectTo(serverHostname, {
       onMessage: (evt, data) => {
@@ -130,10 +136,59 @@ function addServer(serverHostname) {
 
 // Session user info //////////////////////////////////////////////////////////
 
-const sidebar = document.querySelector('#server-sidebar')
+class Sidebar extends oof.El {
+  init({serverChannels}) {
+    Object.assign(this, {serverChannels})
 
-oof.mutable(name => name, sessionUsername)
-  .mount('.user-info-name')
+    return [serverChannels]
+  }
+
+  render() {
+    return el('.sidebar', [
+      el('.sidebar-section.sidebar-section-server', [
+        el('.sidebar-subtitle', [
+          el('h4', 'Server'),
+          el('button.sidebar-subtitle-button', {
+            on_click: () => this.clickedAddServer()
+          }, '+ Add')
+        ]),
+      ]),
+
+      el('.sidebar-section', [
+        el('.sidebar-subtitle', [
+          el('h4', 'Channels'),
+          el('button.sidebar-subtitle-button', {
+            on_click: () => {
+              alert('add channel')
+            }
+          }, '+ Add')
+        ]),
+        el('.location-list', this.serverChannels.value.map(
+          channel => el('a.list-item.list-item-channel', {
+            href: '#',
+            on_click: () => {
+              alert('select channel')
+            }
+          }, channel.name)
+        ))
+      ])
+    ])
+  }
+
+  clickedAddServer() {
+    const host = prompt('Host URL?')
+
+    if (host) {
+      addServer(host)
+    }
+  }
+}
+
+const sidebar = new Sidebar('#sidebar-container', {serverChannels})
+
+/*
+
+oof.mini('.user-info-name', name => el('a.user-info-name', name), sessionUsername)
 
 sessionUser.onChange(user => {
   if (user) {
@@ -213,11 +268,6 @@ const serverList = oof.mutableList(server => {
 serverList.clear()
 
 document.getElementById('add-server').addEventListener('click', () => {
-  const host = prompt('Host URL?')
-
-  if (host) {
-    addServer(host)
-  }
 })
 
 // Message groups /////////////////////////////////////////////////////////////
@@ -393,3 +443,5 @@ document.getElementById('register').addEventListener('click', async () => {
 if (!location.hostname.endsWith('.github.io')) {
   addServer(location.host) // .host includes the port!
 }
+
+*/
