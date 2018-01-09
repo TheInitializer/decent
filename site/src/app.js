@@ -31,6 +31,20 @@ app.use((state, emitter) => {
   state.secure = false
   state.serverRequiresAuthorization = false
 
+  Object.defineProperty(state, 'sessionAuthorized', {
+    get: function() {
+      if (state.serverRequiresAuthorization) {
+        return state._sessionAuthorized
+      } else {
+        return true
+      }
+    },
+
+    set: function(value) {
+      state._sessionAuthorized = value
+    }
+  })
+
   // publish state for debugging/experimenting as well
   window.state = state
 
@@ -67,7 +81,7 @@ app.use((state, emitter) => {
         await api.get(state, 'should-use-secure')
       ).useSecure
 
-      state.ws = new util.WS(state.params.host)
+      state.ws = new util.WS(state.params.host, state.secure)
 
       state.ws.on('*', (evt, timestamp, data) => {
         if (evt === 'ping for data') {
@@ -83,6 +97,8 @@ app.use((state, emitter) => {
       // wait for the WebSocket to connect, because a bunch of things
       // basically don't function without it
       await new Promise(resolve => state.ws.once('open', resolve))
+
+      emitter.emit('emotes.fetch')
     }
 
     emitter.emit('routeready')
